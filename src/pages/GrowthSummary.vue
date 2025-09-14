@@ -20,6 +20,13 @@
       <!-- Stats Cards -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard
+          label="Total Revenue (USD)"
+          :value="totalRevenue.usd"
+          :icon="TrendingUpIcon"
+          icon-class="text-success-600"
+          icon-bg-class="bg-success-100"
+        />
+        <StatCard
           label="Total Portfolio Value"
           :value="summary.totalValue"
           :change="summary.totalProfitLoss"
@@ -45,24 +52,16 @@
           "
         />
         <StatCard
-          label="Total Invested"
-          :value="summary.totalInvested"
+          label="Total Debt (USD)"
+          :value="debtSummary.totalDebtUSD"
           :icon="DollarSignIcon"
-          icon-class="text-gray-600"
-          icon-bg-class="bg-gray-100"
-        />
-        <StatCard
-          label="Assets Count"
-          :value="summary.assetCount"
-          :icon="WalletIcon"
-          icon-class="text-primary-600"
-          icon-bg-class="bg-primary-100"
-          format="number"
+          icon-class="text-danger-600"
+          icon-bg-class="bg-danger-100"
         />
       </div>
 
       <!-- Charts Row -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <!-- Portfolio Value Chart -->
         <Chart
           title="Portfolio Value Over Time"
@@ -77,6 +76,15 @@
           subtitle="Daily profit and loss tracking"
           :data="profitLossChartData"
           :options="profitLossChartOptions"
+        />
+
+        <!-- Asset Distribution by Exchange -->
+        <Chart
+          title="Asset Distribution by Exchange"
+          subtitle="Portfolio allocation across exchanges"
+          :data="exchangeDistributionData"
+          :options="exchangeDistributionOptions"
+          type="pie"
         />
       </div>
 
@@ -113,6 +121,11 @@
                   class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   Current Price
+                </th>
+                <th
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Currency
                 </th>
                 <th
                   class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -163,10 +176,15 @@
                   ${{ asset.purchasePrice.toLocaleString() }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  ${{ asset.currentPrice.toLocaleString() }}
+                  {{ asset.currency === "IDR" ? "Rp" : "$"
+                  }}{{ asset.currentPrice.toLocaleString() }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  ${{ asset.totalValue.toLocaleString() }}
+                  {{ asset.currency || "USD" }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {{ asset.currency === "IDR" ? "Rp" : "$"
+                  }}{{ asset.totalValue.toLocaleString() }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                   <span
@@ -177,10 +195,10 @@
                         : 'text-danger-600'
                     "
                   >
-                    {{ asset.profitLoss >= 0 ? "+" : "" }}${{
-                      asset.profitLoss.toLocaleString()
-                    }}
-                    ({{ asset.profitLossPercentage >= 0 ? "+" : ""
+                    {{ asset.profitLoss >= 0 ? "+" : ""
+                    }}{{ asset.currency === "IDR" ? "Rp" : "$"
+                    }}{{ asset.profitLoss.toLocaleString() }} ({{
+                      asset.profitLossPercentage >= 0 ? "+" : ""
                     }}{{ asset.profitLossPercentage.toFixed(2) }}%)
                   </span>
                 </td>
@@ -221,6 +239,7 @@
 <script>
 import { ref, onMounted, computed } from "vue";
 import { api } from "../services/api";
+import { currencyService } from "../services/currency";
 import Card from "../components/Card.vue";
 import StatCard from "../components/StatCard.vue";
 import Chart from "../components/Chart.vue";
@@ -269,6 +288,7 @@ export default {
     const loading = ref(true);
     const assets = ref([]);
     const dailyGrowth = ref([]);
+    const debts = ref([]);
     const summary = ref({
       totalValue: 0,
       totalProfitLoss: 0,
@@ -277,19 +297,44 @@ export default {
       assetCount: 0,
       topPerformer: null,
     });
+    const debtSummary = ref({
+      totalDebtUSD: 0,
+      totalDebtIDR: 0,
+      debtCount: 0,
+    });
+    const totalRevenue = ref({
+      usd: 0,
+    });
 
     const loadData = async () => {
       try {
         loading.value = true;
-        const [assetsData, growthData, summaryData] = await Promise.all([
+        const [
+          assetsData,
+          growthData,
+          summaryData,
+          debtsData,
+          debtSummaryData,
+        ] = await Promise.all([
           api.getAssets(),
           api.getDailyGrowth(),
           api.getPortfolioSummary(),
+          api.getDebts(),
+          api.getDebtSummary(),
         ]);
 
         assets.value = assetsData;
         dailyGrowth.value = growthData;
         summary.value = summaryData;
+        debts.value = debtsData;
+        debtSummary.value = debtSummaryData;
+
+        // Calculate total revenue (assets - debts) - USD only
+        const assetsUSD = currencyService.getTotalValueInUsd(assetsData);
+
+        totalRevenue.value = {
+          usd: assetsUSD - debtSummaryData.totalDebtUSD,
+        };
       } catch (error) {
         console.error("Error loading data:", error);
       } finally {
@@ -307,7 +352,7 @@ export default {
       }),
       datasets: [
         {
-          label: "Portfolio Value",
+          label: "Portfolio Value (USD)",
           data: dailyGrowth.value.map((item) => item.totalValue),
           borderColor: "rgb(14, 165, 233)",
           backgroundColor: "rgba(14, 165, 233, 0.1)",
@@ -347,16 +392,8 @@ export default {
         {
           label: "Profit/Loss",
           data: dailyGrowth.value.map((item) => item.profitLoss),
-          borderColor: (ctx) => {
-            const value = ctx.parsed.y;
-            return value >= 0 ? "rgb(34, 197, 94)" : "rgb(239, 68, 68)";
-          },
-          backgroundColor: (ctx) => {
-            const value = ctx.parsed.y;
-            return value >= 0
-              ? "rgba(34, 197, 94, 0.1)"
-              : "rgba(239, 68, 68, 0.1)";
-          },
+          borderColor: "rgb(34, 197, 94)",
+          backgroundColor: "rgba(34, 197, 94, 0.1)",
           tension: 0.4,
           fill: true,
         },
@@ -380,6 +417,81 @@ export default {
       },
     }));
 
+    const exchangeDistributionData = computed(() => {
+      // Group assets by exchange and calculate total value in USD
+      const exchangeTotals = {};
+
+      assets.value.forEach((asset) => {
+        const valueInUsd = currencyService.convertToUsd(
+          asset.totalValue,
+          asset.currency
+        );
+        if (exchangeTotals[asset.exchange]) {
+          exchangeTotals[asset.exchange] += valueInUsd;
+        } else {
+          exchangeTotals[asset.exchange] = valueInUsd;
+        }
+      });
+
+      const exchanges = Object.keys(exchangeTotals);
+      const values = Object.values(exchangeTotals);
+      const totalValue = values.reduce((sum, val) => sum + val, 0);
+
+      // Generate colors for each exchange
+      const colors = [
+        "rgb(14, 165, 233)", // Blue
+        "rgb(34, 197, 94)", // Green
+        "rgb(239, 68, 68)", // Red
+        "rgb(168, 85, 247)", // Purple
+        "rgb(245, 158, 11)", // Yellow
+        "rgb(236, 72, 153)", // Pink
+        "rgb(6, 182, 212)", // Cyan
+        "rgb(34, 197, 94)", // Emerald
+      ];
+
+      return {
+        labels: exchanges,
+        datasets: [
+          {
+            data: values,
+            backgroundColor: colors.slice(0, exchanges.length),
+            borderColor: colors
+              .slice(0, exchanges.length)
+              .map((color) =>
+                color.replace("rgb", "rgba").replace(")", ", 0.8)")
+              ),
+            borderWidth: 2,
+          },
+        ],
+      };
+    });
+
+    const exchangeDistributionOptions = computed(() => ({
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: {
+            padding: 20,
+            usePointStyle: true,
+          },
+        },
+        tooltip: {
+          callbacks: {
+            label: function (context) {
+              const value = context.parsed;
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const percentage = ((value / total) * 100).toFixed(1);
+              return `${
+                context.label
+              }: $${value.toLocaleString()} (${percentage}%)`;
+            },
+          },
+        },
+      },
+      responsive: true,
+      maintainAspectRatio: false,
+    }));
+
     onMounted(() => {
       loadData();
     });
@@ -388,10 +500,14 @@ export default {
       loading,
       assets,
       summary,
+      debtSummary,
+      totalRevenue,
       portfolioChartData,
       portfolioChartOptions,
       profitLossChartData,
       profitLossChartOptions,
+      exchangeDistributionData,
+      exchangeDistributionOptions,
       TrendingUpIcon,
       TrendingDownIcon,
       DollarSignIcon,

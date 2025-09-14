@@ -1,5 +1,6 @@
 // Mock API service for crypto asset data
 import { ref, reactive } from "vue";
+import { currencyService } from "./currency";
 
 // Mock data storage
 const assets = ref([
@@ -15,6 +16,7 @@ const assets = ref([
     totalValue: 26000,
     profitLoss: 1000,
     profitLossPercentage: 4.0,
+    currency: "USD",
   },
   {
     id: 2,
@@ -22,12 +24,13 @@ const assets = ref([
     name: "Coinbase Portfolio",
     amount: 1,
     exchange: "Coinbase",
-    purchasePrice: 15000,
-    currentPrice: 16400,
+    purchasePrice: 15000000,
+    currentPrice: 16400000,
     purchaseDate: "2024-02-01",
-    totalValue: 16400,
-    profitLoss: 1400,
+    totalValue: 16400000,
+    profitLoss: 1400000,
     profitLossPercentage: 9.33,
+    currency: "IDR",
   },
   {
     id: 3,
@@ -41,6 +44,35 @@ const assets = ref([
     totalValue: 8520,
     profitLoss: 520,
     profitLossPercentage: 6.5,
+    currency: "USD",
+  },
+]);
+
+// Mock debt data storage
+const debts = ref([
+  {
+    id: 1,
+    description: "Credit Card",
+    amount: 5000,
+    currency: "USD",
+    submitDate: "2024-01-15",
+    picture: null,
+  },
+  {
+    id: 2,
+    description: "Personal Loan",
+    amount: 50000000,
+    currency: "IDR",
+    submitDate: "2024-02-01",
+    picture: null,
+  },
+  {
+    id: 3,
+    description: "Mortgage",
+    amount: 200000,
+    currency: "USD",
+    submitDate: "2024-01-20",
+    picture: null,
   },
 ]);
 
@@ -165,18 +197,26 @@ export const api = {
   getPortfolioSummary() {
     return new Promise((resolve) => {
       setTimeout(() => {
-        const totalValue = assets.value.reduce(
-          (sum, asset) => sum + asset.totalValue,
-          0
-        );
-        const totalProfitLoss = assets.value.reduce(
-          (sum, asset) => sum + asset.profitLoss,
-          0
-        );
-        const totalInvested = assets.value.reduce(
-          (sum, asset) => sum + asset.amount * asset.purchasePrice,
-          0
-        );
+        // Convert all values to USD for consistent calculation
+        const totalValue = assets.value.reduce((sum, asset) => {
+          return (
+            sum + currencyService.convertToUsd(asset.totalValue, asset.currency)
+          );
+        }, 0);
+
+        const totalProfitLoss = assets.value.reduce((sum, asset) => {
+          return (
+            sum + currencyService.convertToUsd(asset.profitLoss, asset.currency)
+          );
+        }, 0);
+
+        const totalInvested = assets.value.reduce((sum, asset) => {
+          const investedValue = asset.amount * asset.purchasePrice;
+          return (
+            sum + currencyService.convertToUsd(investedValue, asset.currency)
+          );
+        }, 0);
+
         const totalProfitLossPercentage =
           totalInvested > 0 ? (totalProfitLoss / totalInvested) * 100 : 0;
 
@@ -195,6 +235,55 @@ export const api = {
           ),
         });
       }, 400);
+    });
+  },
+
+  // Get all debts
+  getDebts() {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve([...debts.value]);
+      }, 300);
+    });
+  },
+
+  // Add new debt
+  addDebt(debtData) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const newDebt = {
+          id: Date.now(),
+          ...debtData,
+        };
+        debts.value.push(newDebt);
+        resolve(newDebt);
+      }, 500);
+    });
+  },
+
+  // Get debt summary
+  getDebtSummary() {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        // Convert all debts to USD for consistent calculation
+        const totalDebtUSD = debts.value.reduce((sum, debt) => {
+          return sum + currencyService.convertToUsd(debt.amount, debt.currency);
+        }, 0);
+
+        const totalDebtIDR = debts.value.reduce((sum, debt) => {
+          return sum + currencyService.convertToIdr(debt.amount, debt.currency);
+        }, 0);
+
+        resolve({
+          totalDebtUSD,
+          totalDebtIDR,
+          debtCount: debts.value.length,
+          debtsByCurrency: {
+            USD: debts.value.filter((debt) => debt.currency === "USD"),
+            IDR: debts.value.filter((debt) => debt.currency === "IDR"),
+          },
+        });
+      }, 300);
     });
   },
 };

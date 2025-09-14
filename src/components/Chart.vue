@@ -22,6 +22,9 @@ import {
   Tooltip,
   Legend,
   Filler,
+  ArcElement,
+  LineController,
+  PieController,
 } from "chart.js";
 
 ChartJS.register(
@@ -32,7 +35,10 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  Filler
+  Filler,
+  ArcElement,
+  LineController,
+  PieController
 );
 
 export default {

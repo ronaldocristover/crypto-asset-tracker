@@ -72,12 +72,27 @@
             </p>
           </div>
 
-          <!-- Purchase Date -->
+          <!-- Currency Selection -->
           <div>
-            <label for="purchase-date-input" class="label">Purchase Date</label>
+            <label for="currency-select" class="label">Currency</label>
+            <select
+              id="currency-select"
+              v-model="form.currency"
+              class="input"
+              required
+            >
+              <option value="">Select currency</option>
+              <option value="USD">USD (US Dollar)</option>
+              <option value="IDR">IDR (Indonesian Rupiah)</option>
+            </select>
+          </div>
+
+          <!-- Submit Date -->
+          <div>
+            <label for="submit-date-input" class="label">Submit Date</label>
             <input
-              id="purchase-date-input"
-              v-model="form.purchaseDate"
+              id="submit-date-input"
+              v-model="form.submitDate"
               type="date"
               class="input"
               required
@@ -95,12 +110,17 @@
               <div>
                 <span class="text-gray-500">Existing Amount:</span>
                 <span class="font-medium ml-2">
-                  ${{ form.existingAmount.toLocaleString() }}
+                  {{ form.currency === "IDR" ? "Rp" : "$"
+                  }}{{ form.existingAmount.toLocaleString() }}
                 </span>
               </div>
               <div>
-                <span class="text-gray-500">Purchase Date:</span>
-                <span class="font-medium ml-2">{{ form.purchaseDate }}</span>
+                <span class="text-gray-500">Currency:</span>
+                <span class="font-medium ml-2">{{ form.currency }}</span>
+              </div>
+              <div>
+                <span class="text-gray-500">Submit Date:</span>
+                <span class="font-medium ml-2">{{ form.submitDate }}</span>
               </div>
             </div>
           </div>
@@ -187,8 +207,14 @@
                 />
               </div>
               <p class="mt-2 text-xs text-gray-500">
-                CSV format: Exchange, Existing Amount (USD), Purchase Date
+                CSV format: Exchange, Existing Amount, Currency, Submit Date
               </p>
+              <button
+                @click="downloadSampleCsv"
+                class="mt-2 text-sm text-primary-600 hover:text-primary-800 underline"
+              >
+                Download Sample CSV
+              </button>
             </div>
           </div>
 
@@ -215,7 +241,7 @@
                   </select>
                 </div>
                 <div class="flex-1">
-                  <label class="label">Existing Amount (USD)</label>
+                  <label class="label">Existing Amount</label>
                   <input
                     v-model.number="bulkItem.existingAmount"
                     type="number"
@@ -227,9 +253,17 @@
                   />
                 </div>
                 <div class="flex-1">
-                  <label class="label">Purchase Date</label>
+                  <label class="label">Currency</label>
+                  <select v-model="bulkItem.currency" class="input" required>
+                    <option value="">Select currency</option>
+                    <option value="USD">USD</option>
+                    <option value="IDR">IDR</option>
+                  </select>
+                </div>
+                <div class="flex-1">
+                  <label class="label">Submit Date</label>
                   <input
-                    v-model="bulkItem.purchaseDate"
+                    v-model="bulkItem.submitDate"
                     type="date"
                     class="input"
                     required
@@ -422,20 +456,26 @@ export default {
     const form = ref({
       exchange: "",
       existingAmount: "",
-      purchaseDate: "",
+      currency: "",
+      submitDate: new Date().toISOString().split("T")[0], // Set current date
     });
 
     const bulkAssets = ref([
       {
         exchange: "",
         existingAmount: "",
-        purchaseDate: "",
+        currency: "",
+        submitDate: new Date().toISOString().split("T")[0], // Set current date
       },
     ]);
 
     const isBulkFormValid = computed(() => {
       return bulkAssets.value.every(
-        (asset) => asset.exchange && asset.existingAmount && asset.purchaseDate
+        (asset) =>
+          asset.exchange &&
+          asset.existingAmount &&
+          asset.currency &&
+          asset.submitDate
       );
     });
 
@@ -457,14 +497,30 @@ export default {
       showPreview.value =
         form.value.exchange &&
         form.value.existingAmount &&
-        form.value.purchaseDate;
+        form.value.currency &&
+        form.value.submitDate;
+    };
+
+    const downloadSampleCsv = () => {
+      const csvContent =
+        "Exchange,Existing Amount,Currency,Submit Date\nBinance,25000,USD,2024-01-15\nCoinbase,15000000,IDR,2024-01-16\nKraken,5000,USD,2024-01-17";
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", "sample_assets.csv");
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     };
 
     const handleSubmit = async () => {
       if (
         !form.value.exchange ||
         !form.value.existingAmount ||
-        !form.value.purchaseDate
+        !form.value.currency ||
+        !form.value.submitDate
       ) {
         return;
       }
@@ -479,7 +535,8 @@ export default {
           exchange: form.value.exchange,
           purchasePrice: parseFloat(form.value.existingAmount),
           currentPrice: parseFloat(form.value.existingAmount),
-          purchaseDate: form.value.purchaseDate,
+          purchaseDate: form.value.submitDate,
+          currency: form.value.currency,
         };
 
         await api.addAsset(assetData);
@@ -511,7 +568,8 @@ export default {
             exchange: asset.exchange,
             purchasePrice: parseFloat(asset.existingAmount),
             currentPrice: parseFloat(asset.existingAmount),
-            purchaseDate: asset.purchaseDate,
+            purchaseDate: asset.submitDate,
+            currency: asset.currency,
           };
           return api.addAsset(assetData);
         });
@@ -542,18 +600,22 @@ export default {
           .slice(1)
           .map((line) => {
             // Skip header
-            const [exchange, existingAmount, purchaseDate] = line
+            const [exchange, existingAmount, currency, submitDate] = line
               .split(",")
               .map((item) => item.trim());
             return {
               exchange: exchange || "",
               existingAmount: existingAmount || "",
-              purchaseDate: purchaseDate || "",
+              currency: currency || "",
+              submitDate: submitDate || "",
             };
           })
           .filter(
             (asset) =>
-              asset.exchange && asset.existingAmount && asset.purchaseDate
+              asset.exchange &&
+              asset.existingAmount &&
+              asset.currency &&
+              asset.submitDate
           );
 
         if (newAssets.length > 0) {
@@ -567,7 +629,8 @@ export default {
       bulkAssets.value.push({
         exchange: "",
         existingAmount: "",
-        purchaseDate: "",
+        currency: "",
+        submitDate: new Date().toISOString().split("T")[0],
       });
     };
 
@@ -581,7 +644,8 @@ export default {
       form.value = {
         exchange: "",
         existingAmount: "",
-        purchaseDate: "",
+        currency: "",
+        submitDate: new Date().toISOString().split("T")[0],
       };
       showPreview.value = false;
     };
@@ -591,7 +655,8 @@ export default {
         {
           exchange: "",
           existingAmount: "",
-          purchaseDate: "",
+          currency: "",
+          submitDate: new Date().toISOString().split("T")[0],
         },
       ];
     };
@@ -604,7 +669,8 @@ export default {
     // Watch for form changes to update preview
     watch(() => form.value.exchange, updatePreview);
     watch(() => form.value.existingAmount, updatePreview);
-    watch(() => form.value.purchaseDate, updatePreview);
+    watch(() => form.value.currency, updatePreview);
+    watch(() => form.value.submitDate, updatePreview);
 
     onMounted(() => {
       loadData();
@@ -622,6 +688,7 @@ export default {
       bulkAssets,
       isBulkFormValid,
       updatePreview,
+      downloadSampleCsv,
       handleSubmit,
       handleBulkSubmit,
       handleCsvUpload,

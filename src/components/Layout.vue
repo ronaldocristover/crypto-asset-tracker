@@ -24,6 +24,13 @@
             >
               Add Assets
             </router-link>
+            <router-link
+              to="/debt"
+              class="nav-link"
+              :class="{ 'nav-link-active': $route.name === 'DebtData' }"
+            >
+              Debt Data
+            </router-link>
           </nav>
 
           <!-- Mobile menu button -->
@@ -71,6 +78,14 @@
             @click="mobileMenuOpen = false"
           >
             Add Assets
+          </router-link>
+          <router-link
+            to="/debt"
+            class="mobile-nav-link"
+            :class="{ 'mobile-nav-link-active': $route.name === 'DebtData' }"
+            @click="mobileMenuOpen = false"
+          >
+            Debt Data
           </router-link>
         </div>
       </div>
