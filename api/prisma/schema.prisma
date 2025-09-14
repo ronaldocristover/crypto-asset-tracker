@@ -1,0 +1,62 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Exchange {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  assets Asset[]
+
+  @@map("exchanges")
+}
+
+model Asset {
+  id            Int      @id @default(autoincrement())
+  exchangeId    Int
+  amount        Decimal  @db.Decimal(20, 8)
+  purchasePrice Decimal  @db.Decimal(20, 8)
+  currentPrice  Decimal  @db.Decimal(20, 8)
+  currency      String   @default("USD")
+  submitDate    DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  exchange Exchange @relation(fields: [exchangeId], references: [id], onDelete: Cascade)
+
+  @@map("assets")
+}
+
+model Debt {
+  id          Int      @id @default(autoincrement())
+  description String
+  amount      Decimal  @db.Decimal(20, 2)
+  currency    String   @default("USD")
+  submitDate  DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("debts")
+}
+
+model DailyGrowth {
+  id         Int      @id @default(autoincrement())
+  date       DateTime @unique
+  totalValue Decimal  @db.Decimal(20, 2)
+  profitLoss Decimal  @db.Decimal(20, 2)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("daily_growth")
+}
