@@ -3,6 +3,50 @@ const { PrismaClient } = require("@prisma/client");
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// Get exchange names only (for frontend dropdown) - MUST be before /:id route
+router.get("/names", async (req, res) => {
+  try {
+    const exchanges = await prisma.exchange.findMany({
+      select: {
+        name: true,
+      },
+      orderBy: {
+        name: "asc",
+      },
+    });
+
+    // Return array of strings as expected by frontend
+    const exchangeNames = exchanges.map(exchange => exchange.name);
+    res.json(exchangeNames);
+  } catch (error) {
+    console.error("Error fetching exchange names:", error);
+    res.status(500).json({ error: "Failed to fetch exchange names" });
+  }
+});
+
+// Get crypto list (static data as expected by frontend) - MUST be before /:id route
+router.get("/crypto-list", async (req, res) => {
+  try {
+    const cryptoList = [
+      { symbol: "BTC", name: "Bitcoin" },
+      { symbol: "ETH", name: "Ethereum" },
+      { symbol: "ADA", name: "Cardano" },
+      { symbol: "DOT", name: "Polkadot" },
+      { symbol: "LINK", name: "Chainlink" },
+      { symbol: "UNI", name: "Uniswap" },
+      { symbol: "LTC", name: "Litecoin" },
+      { symbol: "BCH", name: "Bitcoin Cash" },
+      { symbol: "XRP", name: "Ripple" },
+      { symbol: "SOL", name: "Solana" },
+    ];
+    
+    res.json(cryptoList);
+  } catch (error) {
+    console.error("Error fetching crypto list:", error);
+    res.status(500).json({ error: "Failed to fetch crypto list" });
+  }
+});
+
 // Get all exchanges
 router.get("/", async (req, res) => {
   try {

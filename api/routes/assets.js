@@ -25,12 +25,15 @@ router.get("/", async (req, res) => {
 
       return {
         id: asset.id,
+        symbol: "ASSET",
+        name: `${asset.exchange.name} Portfolio`,
         exchange: asset.exchange.name,
         amount: Number(asset.amount),
         purchasePrice: Number(asset.purchasePrice),
         currentPrice: Number(asset.currentPrice),
         currency: asset.currency,
         submitDate: asset.submitDate,
+        purchaseDate: asset.submitDate,
         totalValue,
         profitLoss,
         profitLossPercentage,
@@ -68,12 +71,15 @@ router.get("/:id", async (req, res) => {
 
     res.json({
       id: asset.id,
+      symbol: "ASSET",
+      name: `${asset.exchange.name} Portfolio`,
       exchange: asset.exchange.name,
       amount: Number(asset.amount),
       purchasePrice: Number(asset.purchasePrice),
       currentPrice: Number(asset.currentPrice),
       currency: asset.currency,
       submitDate: asset.submitDate,
+      purchaseDate: asset.submitDate,
       totalValue,
       profitLoss,
       profitLossPercentage,
@@ -91,26 +97,41 @@ router.post("/", async (req, res) => {
   try {
     const {
       exchangeId,
+      exchange,
       amount,
       purchasePrice,
       currentPrice,
       currency,
       submitDate,
+      purchaseDate,
     } = req.body;
 
+    // Handle exchange name to ID conversion if needed
+    let finalExchangeId = exchangeId;
+    if (!exchangeId && exchange) {
+      const exchangeRecord = await prisma.exchange.findFirst({
+        where: { name: exchange }
+      });
+      if (exchangeRecord) {
+        finalExchangeId = exchangeRecord.id;
+      } else {
+        return res.status(400).json({ error: "Exchange not found" });
+      }
+    }
+
     // Validate required fields
-    if (!exchangeId || !amount || !purchasePrice || !currentPrice) {
+    if (!finalExchangeId || !amount || !purchasePrice || !currentPrice) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
     const asset = await prisma.asset.create({
       data: {
-        exchangeId: parseInt(exchangeId),
+        exchangeId: parseInt(finalExchangeId),
         amount: parseFloat(amount),
         purchasePrice: parseFloat(purchasePrice),
         currentPrice: parseFloat(currentPrice),
         currency: currency || "USD",
-        submitDate: submitDate ? new Date(submitDate) : new Date(),
+        submitDate: submitDate || purchaseDate ? new Date(submitDate || purchaseDate) : new Date(),
       },
       include: {
         exchange: true,
@@ -125,12 +146,15 @@ router.post("/", async (req, res) => {
 
     res.status(201).json({
       id: asset.id,
+      symbol: "ASSET",
+      name: `${asset.exchange.name} Portfolio`,
       exchange: asset.exchange.name,
       amount: Number(asset.amount),
       purchasePrice: Number(asset.purchasePrice),
       currentPrice: Number(asset.currentPrice),
       currency: asset.currency,
       submitDate: asset.submitDate,
+      purchaseDate: asset.submitDate,
       totalValue,
       profitLoss,
       profitLossPercentage,
@@ -179,12 +203,15 @@ router.put("/:id", async (req, res) => {
 
     res.json({
       id: asset.id,
+      symbol: "ASSET",
+      name: `${asset.exchange.name} Portfolio`,
       exchange: asset.exchange.name,
       amount: Number(asset.amount),
       purchasePrice: Number(asset.purchasePrice),
       currentPrice: Number(asset.currentPrice),
       currency: asset.currency,
       submitDate: asset.submitDate,
+      purchaseDate: asset.submitDate,
       totalValue,
       profitLoss,
       profitLossPercentage,

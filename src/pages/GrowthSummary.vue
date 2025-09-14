@@ -402,12 +402,14 @@ export default {
           summaryData,
           debtsData,
           debtSummaryData,
+          revenueData,
         ] = await Promise.all([
           api.getAssets(),
           api.getDailyGrowth(),
           api.getPortfolioSummary(),
           api.getDebts(),
           api.getDebtSummary(),
+          api.getTotalRevenue(),
         ]);
 
         assets.value = assetsData;
@@ -416,11 +418,9 @@ export default {
         debts.value = debtsData;
         debtSummary.value = debtSummaryData;
 
-        // Calculate total revenue (assets - debts) - USD only
-        const assetsUSD = currencyService.getTotalValueInUsd(assetsData);
-
+        // Use revenue data from API
         totalRevenue.value = {
-          usd: assetsUSD - debtSummaryData.totalDebtUSD,
+          usd: revenueData.totalRevenue,
         };
       } catch (error) {
         console.error("Error loading data:", error);
@@ -504,54 +504,24 @@ export default {
       },
     }));
 
-    const exchangeDistributionData = computed(() => {
-      // Group assets by exchange and calculate total value in USD
-      const exchangeTotals = {};
-
-      assets.value.forEach((asset) => {
-        const valueInUsd = currencyService.convertToUsd(
-          asset.totalValue,
-          asset.currency
-        );
-        if (exchangeTotals[asset.exchange]) {
-          exchangeTotals[asset.exchange] += valueInUsd;
-        } else {
-          exchangeTotals[asset.exchange] = valueInUsd;
-        }
-      });
-
-      const exchanges = Object.keys(exchangeTotals);
-      const values = Object.values(exchangeTotals);
-      const totalValue = values.reduce((sum, val) => sum + val, 0);
-
-      // Generate colors for each exchange
-      const colors = [
-        "rgb(14, 165, 233)", // Blue
-        "rgb(34, 197, 94)", // Green
-        "rgb(239, 68, 68)", // Red
-        "rgb(168, 85, 247)", // Purple
-        "rgb(245, 158, 11)", // Yellow
-        "rgb(236, 72, 153)", // Pink
-        "rgb(6, 182, 212)", // Cyan
-        "rgb(34, 197, 94)", // Emerald
-      ];
-
-      return {
-        labels: exchanges,
-        datasets: [
-          {
-            data: values,
-            backgroundColor: colors.slice(0, exchanges.length),
-            borderColor: colors
-              .slice(0, exchanges.length)
-              .map((color) =>
-                color.replace("rgb", "rgba").replace(")", ", 0.8)")
-              ),
-            borderWidth: 2,
-          },
-        ],
-      };
+    const exchangeDistributionData = ref({
+      labels: [],
+      datasets: [{
+        data: [],
+        backgroundColor: [],
+        borderColor: [],
+        borderWidth: 2,
+      }],
     });
+
+    const loadExchangeDistribution = async () => {
+      try {
+        const data = await api.getExchangeDistribution();
+        exchangeDistributionData.value = data;
+      } catch (error) {
+        console.error('Error loading exchange distribution:', error);
+      }
+    };
 
     const exchangeDistributionOptions = computed(() => ({
       plugins: {
@@ -581,6 +551,7 @@ export default {
 
     onMounted(() => {
       loadData();
+      loadExchangeDistribution();
     });
 
     return {
@@ -589,6 +560,7 @@ export default {
       summary,
       debtSummary,
       totalRevenue,
+      loadExchangeDistribution,
       portfolioChartData,
       portfolioChartOptions,
       profitLossChartData,

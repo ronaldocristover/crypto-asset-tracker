@@ -62,7 +62,8 @@ router.get("/summary", async (req, res) => {
 
       if (!top || profitLossPercentage > top.profitLossPercentage) {
         return {
-          symbol: asset.exchange.name,
+          symbol: "ASSET",
+          name: `${asset.exchange.name} Portfolio`,
           profitLossPercentage,
         };
       }
@@ -75,7 +76,7 @@ router.get("/summary", async (req, res) => {
       totalInvested,
       totalProfitLossPercentage,
       assetCount: assets.length,
-      topPerformer: topPerformer || { symbol: "N/A", profitLossPercentage: 0 },
+      topPerformer: topPerformer || { symbol: "N/A", name: "N/A", profitLossPercentage: 0 },
     });
   } catch (error) {
     console.error("Error fetching portfolio summary:", error);
