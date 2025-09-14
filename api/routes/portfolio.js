@@ -28,7 +28,18 @@ router.get("/summary", async (req, res) => {
       include: {
         exchange: true,
       },
+      orderBy: {
+        submitDate: "desc",
+      },
     });
+
+    // Get total debt
+    const debts = await prisma.debt.findMany();
+    const totalDebt = debts.reduce((sum, debt) => {
+      return (
+        sum + currencyService.convertToUsd(Number(debt.amount), debt.currency)
+      );
+    }, 0);
 
     // Calculate portfolio totals
     const totalValue = assets.reduce((sum, asset) => {
@@ -36,12 +47,23 @@ router.get("/summary", async (req, res) => {
       return sum + currencyService.convertToUsd(value, asset.currency);
     }, 0);
 
-    const totalProfitLoss = assets.reduce((sum, asset) => {
-      const totalValue = Number(asset.amount) * Number(asset.currentPrice);
-      const investedValue = Number(asset.amount) * Number(asset.purchasePrice);
-      const profitLoss = totalValue - investedValue;
-      return sum + currencyService.convertToUsd(profitLoss, asset.currency);
-    }, 0);
+    // Calculate profit/loss from latest submitted date minus total debt
+    const latestSubmitDate = assets.length > 0 ? assets[0].submitDate : null;
+    const assetsFromLatestDate = assets.filter(
+      (asset) =>
+        new Date(asset.submitDate).toISOString().split("T")[0] ===
+        new Date(latestSubmitDate).toISOString().split("T")[0]
+    );
+
+    const totalValueFromLatestDate = assetsFromLatestDate.reduce(
+      (sum, asset) => {
+        const value = Number(asset.amount) * Number(asset.currentPrice);
+        return sum + currencyService.convertToUsd(value, asset.currency);
+      },
+      0
+    );
+
+    const totalProfitLoss = totalValueFromLatestDate - totalDebt;
 
     const totalInvested = assets.reduce((sum, asset) => {
       const investedValue = Number(asset.amount) * Number(asset.purchasePrice);
@@ -75,8 +97,15 @@ router.get("/summary", async (req, res) => {
       totalProfitLoss,
       totalInvested,
       totalProfitLossPercentage,
+      totalDebt,
+      netValue: totalValue - totalDebt,
+      latestSubmitDate: latestSubmitDate,
       assetCount: assets.length,
-      topPerformer: topPerformer || { symbol: "N/A", name: "N/A", profitLossPercentage: 0 },
+      topPerformer: topPerformer || {
+        symbol: "N/A",
+        name: "N/A",
+        profitLossPercentage: 0,
+      },
     });
   } catch (error) {
     console.error("Error fetching portfolio summary:", error);
@@ -103,6 +132,106 @@ router.get("/daily-growth", async (req, res) => {
   } catch (error) {
     console.error("Error fetching daily growth:", error);
     res.status(500).json({ error: "Failed to fetch daily growth" });
+  }
+});
+
+// Get portfolio value over time calculated from assets
+router.get("/portfolio-value-over-time", async (req, res) => {
+  try {
+    const assets = await prisma.asset.findMany({
+      include: {
+        exchange: true,
+      },
+      orderBy: {
+        submitDate: "asc",
+      },
+    });
+
+    // Get total debt for portfolio calculation
+    const debts = await prisma.debt.findMany();
+    const totalDebt = debts.reduce((sum, debt) => {
+      return (
+        sum + currencyService.convertToUsd(Number(debt.amount), debt.currency)
+      );
+    }, 0);
+
+    if (assets.length === 0) {
+      return res.json([]);
+    }
+
+    // Generate portfolio data points based on asset submit dates
+    const portfolioData = [];
+
+    // Group assets by submitDate
+    const assetsByDate = {};
+    assets.forEach((asset) => {
+      const submitDate = new Date(asset.submitDate).toISOString().split("T")[0];
+      if (!assetsByDate[submitDate]) {
+        assetsByDate[submitDate] = [];
+      }
+      assetsByDate[submitDate].push(asset);
+    });
+
+    // Calculate cumulative portfolio value for each date
+    const sortedDates = Object.keys(assetsByDate).sort();
+    let cumulativeAssets = [];
+
+    // Generate data points for each date when assets were added
+    sortedDates.forEach((date) => {
+      // Add new assets from this date to cumulative list
+      cumulativeAssets = [...cumulativeAssets, ...assetsByDate[date]];
+
+      // Recalculate total values with all assets up to this date
+      const cumulativeTotalValue = cumulativeAssets.reduce((sum, asset) => {
+        const value = Number(asset.amount) * Number(asset.currentPrice);
+        return sum + currencyService.convertToUsd(value, asset.currency);
+      }, 0);
+
+      const cumulativeTotalInvested = cumulativeAssets.reduce((sum, asset) => {
+        const investedValue =
+          Number(asset.amount) * Number(asset.purchasePrice);
+        return (
+          sum + currencyService.convertToUsd(investedValue, asset.currency)
+        );
+      }, 0);
+
+      const profitLoss = cumulativeTotalValue - totalDebt;
+      const netPortfolioValue = cumulativeTotalValue - totalDebt;
+
+      portfolioData.push({
+        date: date,
+        totalValue: cumulativeTotalValue,
+        netValue: netPortfolioValue,
+        profitLoss: profitLoss,
+        totalDebt: totalDebt,
+      });
+    });
+
+    // If there are assets but no data points, add current total
+    if (portfolioData.length === 0 && assets.length > 0) {
+      const totalValue = assets.reduce((sum, asset) => {
+        const value = Number(asset.amount) * Number(asset.currentPrice);
+        return sum + currencyService.convertToUsd(value, asset.currency);
+      }, 0);
+
+      const profitLoss = totalValue - totalDebt;
+      const netPortfolioValue = totalValue - totalDebt;
+
+      portfolioData.push({
+        date: new Date().toISOString().split("T")[0],
+        totalValue: totalValue,
+        netValue: netPortfolioValue,
+        // profitLoss: profitLoss,
+        totalDebt: totalDebt,
+      });
+    }
+
+    res.json(portfolioData);
+  } catch (error) {
+    console.error("Error calculating portfolio value over time:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to calculate portfolio value over time" });
   }
 });
 
@@ -201,6 +330,30 @@ router.get("/exchange-distribution", async (req, res) => {
   } catch (error) {
     console.error("Error fetching exchange distribution:", error);
     res.status(500).json({ error: "Failed to fetch exchange distribution" });
+  }
+});
+
+// Get total debt sum
+router.get("/total-debt", async (req, res) => {
+  try {
+    const debts = await prisma.debt.findMany();
+    const totalDebtUSD = debts.reduce((sum, debt) => {
+      return (
+        sum + currencyService.convertToUsd(Number(debt.amount), debt.currency)
+      );
+    }, 0);
+
+    const totalDebtIDR = currencyService.usdToIdr(totalDebtUSD);
+
+    res.json({
+      totalDebtUSD,
+      totalDebtIDR,
+      debtCount: debts.length,
+      currency: "USD",
+    });
+  } catch (error) {
+    console.error("Error calculating total debt:", error);
+    res.status(500).json({ error: "Failed to calculate total debt" });
   }
 });
 
