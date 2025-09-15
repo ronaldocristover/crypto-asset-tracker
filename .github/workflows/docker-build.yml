@@ -15,7 +15,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Login to Docker Registry
-        run: docker login registry.digitalocean.com/so-thai -u "${{ secrets.DOCKER_KEY }}" -p "${{ secrets.DOCKER_KEY }}"
+        run: docker login registry.digitalocean.com/so-thai -u "${{ secrets.DO_KEY }}" -p "${{ secrets.DO_KEY }}"
 
       - name: Build API Docker Image
         run: docker build -t "registry.digitalocean.com/so-thai/asset-tracker-api:latest" ./api
