@@ -17,19 +17,17 @@ router.get("/", async (req, res) => {
 
     // Calculate additional fields
     const assetsWithCalculations = assets.map((asset) => {
-      const totalValue = Number(asset.amount) * Number(asset.currentPrice);
-      const investedValue = Number(asset.amount) * Number(asset.purchasePrice);
-      const profitLoss = totalValue - investedValue;
-      const profitLossPercentage =
-        investedValue > 0 ? (profitLoss / investedValue) * 100 : 0;
+      const totalValue = Number(asset.currentPrice);
+      const profitLoss = 0; // Simplified - no purchase price to compare
+      const profitLossPercentage = 0; // Simplified
 
       return {
         id: asset.id,
         symbol: "ASSET",
         name: `${asset.exchange.name} Portfolio`,
         exchange: asset.exchange.name,
-        amount: Number(asset.amount),
-        purchasePrice: Number(asset.purchasePrice),
+        amount: 1, // Default amount since we removed the field
+        purchasePrice: Number(asset.currentPrice), // Use current price as purchase price for display
         currentPrice: Number(asset.currentPrice),
         currency: asset.currency,
         submitDate: asset.submitDate,
@@ -63,19 +61,17 @@ router.get("/:id", async (req, res) => {
       return res.status(404).json({ error: "Asset not found" });
     }
 
-    const totalValue = Number(asset.amount) * Number(asset.currentPrice);
-    const investedValue = Number(asset.amount) * Number(asset.purchasePrice);
-    const profitLoss = totalValue - investedValue;
-    const profitLossPercentage =
-      investedValue > 0 ? (profitLoss / investedValue) * 100 : 0;
+    const totalValue = Number(asset.currentPrice);
+    const profitLoss = 0; // Simplified - no purchase price to compare
+    const profitLossPercentage = 0; // Simplified
 
     res.json({
       id: asset.id,
       symbol: "ASSET",
       name: `${asset.exchange.name} Portfolio`,
       exchange: asset.exchange.name,
-      amount: Number(asset.amount),
-      purchasePrice: Number(asset.purchasePrice),
+      amount: 1, // Default amount since we removed the field
+      purchasePrice: Number(asset.currentPrice), // Use current price as purchase price for display
       currentPrice: Number(asset.currentPrice),
       currency: asset.currency,
       submitDate: asset.submitDate,
@@ -98,8 +94,6 @@ router.post("/", async (req, res) => {
     const {
       exchangeId,
       exchange,
-      amount,
-      purchasePrice,
       currentPrice,
       currency,
       submitDate,
@@ -110,7 +104,7 @@ router.post("/", async (req, res) => {
     let finalExchangeId = exchangeId;
     if (!exchangeId && exchange) {
       const exchangeRecord = await prisma.exchange.findFirst({
-        where: { name: exchange }
+        where: { name: exchange },
       });
       if (exchangeRecord) {
         finalExchangeId = exchangeRecord.id;
@@ -120,37 +114,36 @@ router.post("/", async (req, res) => {
     }
 
     // Validate required fields
-    if (!finalExchangeId || !amount || !purchasePrice || !currentPrice) {
+    if (!finalExchangeId || !currentPrice) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
     const asset = await prisma.asset.create({
       data: {
         exchangeId: parseInt(finalExchangeId),
-        amount: parseFloat(amount),
-        purchasePrice: parseFloat(purchasePrice),
         currentPrice: parseFloat(currentPrice),
         currency: currency || "USD",
-        submitDate: submitDate || purchaseDate ? new Date(submitDate || purchaseDate) : new Date(),
+        submitDate:
+          submitDate || purchaseDate
+            ? new Date(submitDate || purchaseDate)
+            : new Date(),
       },
       include: {
         exchange: true,
       },
     });
 
-    const totalValue = Number(asset.amount) * Number(asset.currentPrice);
-    const investedValue = Number(asset.amount) * Number(asset.purchasePrice);
-    const profitLoss = totalValue - investedValue;
-    const profitLossPercentage =
-      investedValue > 0 ? (profitLoss / investedValue) * 100 : 0;
+    const totalValue = Number(asset.currentPrice);
+    const profitLoss = 0; // Simplified - no purchase price to compare
+    const profitLossPercentage = 0; // Simplified
 
     res.status(201).json({
       id: asset.id,
       symbol: "ASSET",
       name: `${asset.exchange.name} Portfolio`,
       exchange: asset.exchange.name,
-      amount: Number(asset.amount),
-      purchasePrice: Number(asset.purchasePrice),
+      amount: 1, // Default amount since we removed the field
+      purchasePrice: Number(asset.currentPrice), // Use current price as purchase price for display
       currentPrice: Number(asset.currentPrice),
       currency: asset.currency,
       submitDate: asset.submitDate,
@@ -170,22 +163,13 @@ router.post("/", async (req, res) => {
 // Update asset
 router.put("/:id", async (req, res) => {
   try {
-    const {
-      exchangeId,
-      amount,
-      purchasePrice,
-      currentPrice,
-      currency,
-      submitDate,
-    } = req.body;
+    const { exchangeId, currentPrice, currency, submitDate } = req.body;
     const assetId = parseInt(req.params.id);
 
     const asset = await prisma.asset.update({
       where: { id: assetId },
       data: {
         ...(exchangeId && { exchangeId: parseInt(exchangeId) }),
-        ...(amount && { amount: parseFloat(amount) }),
-        ...(purchasePrice && { purchasePrice: parseFloat(purchasePrice) }),
         ...(currentPrice && { currentPrice: parseFloat(currentPrice) }),
         ...(currency && { currency }),
         ...(submitDate && { submitDate: new Date(submitDate) }),
@@ -195,19 +179,17 @@ router.put("/:id", async (req, res) => {
       },
     });
 
-    const totalValue = Number(asset.amount) * Number(asset.currentPrice);
-    const investedValue = Number(asset.amount) * Number(asset.purchasePrice);
-    const profitLoss = totalValue - investedValue;
-    const profitLossPercentage =
-      investedValue > 0 ? (profitLoss / investedValue) * 100 : 0;
+    const totalValue = Number(asset.currentPrice);
+    const profitLoss = 0; // Simplified - no purchase price to compare
+    const profitLossPercentage = 0; // Simplified
 
     res.json({
       id: asset.id,
       symbol: "ASSET",
       name: `${asset.exchange.name} Portfolio`,
       exchange: asset.exchange.name,
-      amount: Number(asset.amount),
-      purchasePrice: Number(asset.purchasePrice),
+      amount: 1, // Default amount since we removed the field
+      purchasePrice: Number(asset.currentPrice), // Use current price as purchase price for display
       currentPrice: Number(asset.currentPrice),
       currency: asset.currency,
       submitDate: asset.submitDate,
