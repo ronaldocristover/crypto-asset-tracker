@@ -23,15 +23,13 @@ model Exchange {
 }
 
 model Asset {
-  id            Int      @id @default(autoincrement())
-  exchangeId    Int
-  amount        Decimal  @db.Decimal(20, 8)
-  purchasePrice Decimal  @db.Decimal(20, 8)
-  currentPrice  Decimal  @db.Decimal(20, 8)
-  currency      String   @default("USD")
-  submitDate    DateTime @default(now())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           Int      @id @default(autoincrement())
+  exchangeId   Int
+  currentPrice Decimal  @db.Decimal(20, 8)
+  currency     String   @default("USD")
+  submitDate   DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   exchange Exchange @relation(fields: [exchangeId], references: [id], onDelete: Cascade)
 
@@ -50,13 +48,14 @@ model Debt {
   @@map("debts")
 }
 
-model DailyGrowth {
-  id         Int      @id @default(autoincrement())
-  date       DateTime @unique
-  totalValue Decimal  @db.Decimal(20, 2)
-  profitLoss Decimal  @db.Decimal(20, 2)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+model Config {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique
+  value       String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  @@map("daily_growth")
+  @@map("configs")
 }

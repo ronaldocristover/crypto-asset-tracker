@@ -3,27 +3,62 @@ const { PrismaClient } = require("@prisma/client");
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Currency conversion service
-const currencyService = {
-  usdToIdr: (usdAmount) => usdAmount * 16500,
-  idrToUsd: (idrAmount) => idrAmount / 16500,
-  convertToUsd: (amount, fromCurrency) => {
-    if (fromCurrency === "IDR") {
-      return amount / 16500;
-    }
-    return amount; // Already USD
-  },
-  convertToIdr: (amount, fromCurrency) => {
-    if (fromCurrency === "USD") {
-      return amount * 16500;
-    }
-    return amount; // Already IDR
-  },
+// Currency conversion service using config from database
+const getCurrencyService = async () => {
+  try {
+    const config = await prisma.config.findFirst({
+      where: {
+        key: "USD_TO_IDR_RATE",
+        isActive: true,
+      },
+    });
+
+    const exchangeRate = config ? parseFloat(config.value) : 16500;
+
+    return {
+      usdToIdr: (usdAmount) => usdAmount * exchangeRate,
+      idrToUsd: (idrAmount) => idrAmount / exchangeRate,
+      convertToUsd: (amount, fromCurrency) => {
+        if (fromCurrency === "IDR") {
+          return amount / exchangeRate;
+        }
+        return amount; // Already USD
+      },
+      convertToIdr: (amount, fromCurrency) => {
+        if (fromCurrency === "USD") {
+          return amount * exchangeRate;
+        }
+        return amount; // Already IDR
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching currency config, using default:", error);
+    // Fallback to default rate
+    const exchangeRate = 16500;
+    return {
+      usdToIdr: (usdAmount) => usdAmount * exchangeRate,
+      idrToUsd: (idrAmount) => idrAmount / exchangeRate,
+      convertToUsd: (amount, fromCurrency) => {
+        if (fromCurrency === "IDR") {
+          return amount / exchangeRate;
+        }
+        return amount; // Already USD
+      },
+      convertToIdr: (amount, fromCurrency) => {
+        if (fromCurrency === "USD") {
+          return amount * exchangeRate;
+        }
+        return amount; // Already IDR
+      },
+    };
+  }
 };
 
 // Get portfolio summary
 router.get("/summary", async (req, res) => {
   try {
+    const currencyService = await getCurrencyService();
+
     const assets = await prisma.asset.findMany({
       include: {
         exchange: true,
@@ -43,7 +78,7 @@ router.get("/summary", async (req, res) => {
 
     // Calculate portfolio totals
     const totalValue = assets.reduce((sum, asset) => {
-      const value = Number(asset.amount) * Number(asset.currentPrice);
+      const value = Number(asset.currentPrice);
       return sum + currencyService.convertToUsd(value, asset.currency);
     }, 0);
 
@@ -57,7 +92,7 @@ router.get("/summary", async (req, res) => {
 
     const totalValueFromLatestDate = assetsFromLatestDate.reduce(
       (sum, asset) => {
-        const value = Number(asset.amount) * Number(asset.currentPrice);
+        const value = Number(asset.currentPrice);
         return sum + currencyService.convertToUsd(value, asset.currency);
       },
       0
@@ -65,28 +100,20 @@ router.get("/summary", async (req, res) => {
 
     const totalProfitLoss = totalValueFromLatestDate - totalDebt;
 
-    const totalInvested = assets.reduce((sum, asset) => {
-      const investedValue = Number(asset.amount) * Number(asset.purchasePrice);
-      return sum + currencyService.convertToUsd(investedValue, asset.currency);
-    }, 0);
+    // Since we removed amount and purchasePrice, we'll use current value as invested value
+    const totalInvested = totalValue;
+    const totalProfitLossPercentage = 0; // No profit/loss calculation without purchase price
 
-    const totalProfitLossPercentage =
-      totalInvested > 0 ? (totalProfitLoss / totalInvested) * 100 : 0;
-
-    // Find top performer
+    // Find top performer (simplified since no profit/loss calculation)
     const topPerformer = assets.reduce((top, asset) => {
-      const totalValue = Number(asset.amount) * Number(asset.currentPrice);
-      const investedValue = Number(asset.amount) * Number(asset.purchasePrice);
-      const profitLossPercentage =
-        investedValue > 0
-          ? ((totalValue - investedValue) / investedValue) * 100
-          : 0;
+      const currentValue = Number(asset.currentPrice);
 
-      if (!top || profitLossPercentage > top.profitLossPercentage) {
+      if (!top || currentValue > top.currentValue) {
         return {
           symbol: "ASSET",
           name: `${asset.exchange.name} Portfolio`,
-          profitLossPercentage,
+          currentValue,
+          profitLossPercentage: 0,
         };
       }
       return top;
@@ -113,31 +140,11 @@ router.get("/summary", async (req, res) => {
   }
 });
 
-// Get daily growth data
-router.get("/daily-growth", async (req, res) => {
-  try {
-    const dailyGrowth = await prisma.dailyGrowth.findMany({
-      orderBy: {
-        date: "asc",
-      },
-    });
-
-    const formattedGrowth = dailyGrowth.map((growth) => ({
-      date: growth.date,
-      totalValue: Number(growth.totalValue),
-      profitLoss: Number(growth.profitLoss),
-    }));
-
-    res.json(formattedGrowth);
-  } catch (error) {
-    console.error("Error fetching daily growth:", error);
-    res.status(500).json({ error: "Failed to fetch daily growth" });
-  }
-});
-
 // Get portfolio value over time calculated from assets
 router.get("/portfolio-value-over-time", async (req, res) => {
   try {
+    const currencyService = await getCurrencyService();
+
     const assets = await prisma.asset.findMany({
       include: {
         exchange: true,
@@ -183,18 +190,12 @@ router.get("/portfolio-value-over-time", async (req, res) => {
 
       // Recalculate total values with all assets up to this date
       const cumulativeTotalValue = cumulativeAssets.reduce((sum, asset) => {
-        const value = Number(asset.amount) * Number(asset.currentPrice);
+        const value = Number(asset.currentPrice);
         return sum + currencyService.convertToUsd(value, asset.currency);
       }, 0);
 
-      const cumulativeTotalInvested = cumulativeAssets.reduce((sum, asset) => {
-        const investedValue =
-          Number(asset.amount) * Number(asset.purchasePrice);
-        return (
-          sum + currencyService.convertToUsd(investedValue, asset.currency)
-        );
-      }, 0);
-
+      // Since we removed amount and purchasePrice, we'll use current value as invested value
+      const cumulativeTotalInvested = cumulativeTotalValue;
       const profitLoss = cumulativeTotalValue - totalDebt;
       const netPortfolioValue = cumulativeTotalValue - totalDebt;
 
@@ -210,7 +211,7 @@ router.get("/portfolio-value-over-time", async (req, res) => {
     // If there are assets but no data points, add current total
     if (portfolioData.length === 0 && assets.length > 0) {
       const totalValue = assets.reduce((sum, asset) => {
-        const value = Number(asset.amount) * Number(asset.currentPrice);
+        const value = Number(asset.currentPrice);
         return sum + currencyService.convertToUsd(value, asset.currency);
       }, 0);
 
@@ -273,6 +274,8 @@ router.post("/daily-growth", async (req, res) => {
 // Get exchange distribution data for pie chart
 router.get("/exchange-distribution", async (req, res) => {
   try {
+    const currencyService = await getCurrencyService();
+
     const assets = await prisma.asset.findMany({
       include: {
         exchange: true,
@@ -284,7 +287,7 @@ router.get("/exchange-distribution", async (req, res) => {
 
     assets.forEach((asset) => {
       const valueInUsd = currencyService.convertToUsd(
-        Number(asset.amount) * Number(asset.currentPrice),
+        Number(asset.currentPrice),
         asset.currency
       );
 
@@ -336,6 +339,8 @@ router.get("/exchange-distribution", async (req, res) => {
 // Get total debt sum
 router.get("/total-debt", async (req, res) => {
   try {
+    const currencyService = await getCurrencyService();
+
     const debts = await prisma.debt.findMany();
     const totalDebtUSD = debts.reduce((sum, debt) => {
       return (
@@ -360,10 +365,12 @@ router.get("/total-debt", async (req, res) => {
 // Get total revenue (assets - debts)
 router.get("/revenue", async (req, res) => {
   try {
+    const currencyService = await getCurrencyService();
+
     // Get total assets value in USD
     const assets = await prisma.asset.findMany();
     const totalAssetsUSD = assets.reduce((sum, asset) => {
-      const value = Number(asset.amount) * Number(asset.currentPrice);
+      const value = Number(asset.currentPrice);
       return sum + currencyService.convertToUsd(value, asset.currency);
     }, 0);
 
