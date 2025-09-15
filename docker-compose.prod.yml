@@ -3,7 +3,7 @@ version: "3.8"
 services:
   # Backend API
   backend:
-    image: registry.digitalocean.com/${DIGITALOCEAN_REGISTRY_NAME}/asset-tracker-backend:latest
+    image: registry.digitalocean.com/${DO_REGISTRY_NAME}/asset-tracker-backend:latest
     container_name: asset-tracker-backend
     restart: unless-stopped
     environment:
@@ -17,7 +17,7 @@ services:
 
   # Frontend
   frontend:
-    image: registry.digitalocean.com/${DIGITALOCEAN_REGISTRY_NAME}/asset-tracker-frontend:latest
+    image: registry.digitalocean.com/${DO_REGISTRY_NAME}/asset-tracker-frontend:latest
     container_name: asset-tracker-frontend
     restart: unless-stopped
     ports:

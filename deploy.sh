@@ -14,8 +14,8 @@ NC='\033[0m' # No Color
 echo -e "${GREEN}Starting Asset Tracker deployment...${NC}"
 
 # Check if required environment variables are set
-if [ -z "$DIGITALOCEAN_REGISTRY_NAME" ]; then
-    echo -e "${RED}Error: DIGITALOCEAN_REGISTRY_NAME environment variable is not set${NC}"
+if [ -z "$DO_REGISTRY_NAME" ]; then
+    echo -e "${RED}Error: DO_REGISTRY_NAME environment variable is not set${NC}"
     exit 1
 fi
 
@@ -30,8 +30,8 @@ echo "$DIGITALOCEAN_ACCESS_TOKEN" | docker login registry.digitalocean.com -u "$
 
 # Pull latest images
 echo -e "${YELLOW}Pulling latest images...${NC}"
-docker pull registry.digitalocean.com/$DIGITALOCEAN_REGISTRY_NAME/asset-tracker-backend:latest
-docker pull registry.digitalocean.com/$DIGITALOCEAN_REGISTRY_NAME/asset-tracker-frontend:latest
+docker pull registry.digitalocean.com/$DO_REGISTRY_NAME/asset-tracker-backend:latest
+docker pull registry.digitalocean.com/$DO_REGISTRY_NAME/asset-tracker-frontend:latest
 
 # Stop existing containers
 echo -e "${YELLOW}Stopping existing containers...${NC}"
