@@ -71,7 +71,7 @@
                 <span class="text-gray-500">Amount:</span>
                 <span class="font-medium ml-2">
                   {{ form.currency === "IDR" ? "Rp" : "$"
-                  }}{{ form.amount.toLocaleString() }}
+                  }}{{ (form.amount || 0).toLocaleString() }}
                 </span>
               </div>
               <div>
@@ -200,7 +200,7 @@
             <div class="text-right">
               <p class="font-medium text-gray-900">
                 {{ debt.currency === "IDR" ? "Rp" : "$"
-                }}{{ debt.amount.toLocaleString() }}
+                }}{{ (debt.amount || 0).toLocaleString() }}
               </p>
               <p class="text-sm text-danger-600">
                 {{ debt.currency }}

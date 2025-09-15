@@ -9,19 +9,21 @@ const apiRequest = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
   const config = {
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     ...options,
   };
 
   try {
     const response = await fetch(url, config);
-    
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      throw new Error(
+        errorData.error || `HTTP error! status: ${response.status}`
+      );
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error(`API request failed for ${endpoint}:`, error);
@@ -34,9 +36,9 @@ export const api = {
   // Get all assets
   async getAssets() {
     try {
-      return await apiRequest('/assets');
+      return await apiRequest("/assets");
     } catch (error) {
-      console.error('Failed to fetch assets:', error);
+      console.error("Failed to fetch assets:", error);
       // Fallback to empty array
       return [];
     }
@@ -45,12 +47,12 @@ export const api = {
   // Add new asset
   async addAsset(assetData) {
     try {
-      return await apiRequest('/assets', {
-        method: 'POST',
+      return await apiRequest("/assets", {
+        method: "POST",
         body: JSON.stringify(assetData),
       });
     } catch (error) {
-      console.error('Failed to add asset:', error);
+      console.error("Failed to add asset:", error);
       throw error;
     }
   },
@@ -58,9 +60,20 @@ export const api = {
   // Get daily growth data
   async getDailyGrowth() {
     try {
-      return await apiRequest('/portfolio/daily-growth');
+      return await apiRequest("/portfolio/daily-growth");
     } catch (error) {
-      console.error('Failed to fetch daily growth:', error);
+      console.error("Failed to fetch daily growth:", error);
+      // Fallback to empty array
+      return [];
+    }
+  },
+
+  // Get portfolio value over time calculated from assets
+  async getPortfolioValueOverTime() {
+    try {
+      return await apiRequest("/portfolio/portfolio-value-over-time");
+    } catch (error) {
+      console.error("Failed to fetch portfolio value over time:", error);
       // Fallback to empty array
       return [];
     }
@@ -69,13 +82,13 @@ export const api = {
   // Get exchanges list (returns array of strings)
   async getExchanges() {
     try {
-      return await apiRequest('/exchanges/names');
+      return await apiRequest("/exchanges/names");
     } catch (error) {
-      console.error('Failed to fetch exchanges:', error);
+      console.error("Failed to fetch exchanges:", error);
       // Fallback to default exchanges
       return [
         "Binance",
-        "Coinbase", 
+        "Coinbase",
         "Kraken",
         "KuCoin",
         "Bybit",
@@ -89,9 +102,9 @@ export const api = {
   // Get crypto list
   async getCryptoList() {
     try {
-      return await apiRequest('/exchanges/crypto-list');
+      return await apiRequest("/exchanges/crypto-list");
     } catch (error) {
-      console.error('Failed to fetch crypto list:', error);
+      console.error("Failed to fetch crypto list:", error);
       // Fallback to default crypto list
       return [
         { symbol: "BTC", name: "Bitcoin" },
@@ -111,9 +124,9 @@ export const api = {
   // Get portfolio summary
   async getPortfolioSummary() {
     try {
-      return await apiRequest('/portfolio/summary');
+      return await apiRequest("/portfolio/summary");
     } catch (error) {
-      console.error('Failed to fetch portfolio summary:', error);
+      console.error("Failed to fetch portfolio summary:", error);
       // Fallback to default summary
       return {
         totalValue: 0,
@@ -129,9 +142,9 @@ export const api = {
   // Get all debts
   async getDebts() {
     try {
-      return await apiRequest('/debts');
+      return await apiRequest("/debts");
     } catch (error) {
-      console.error('Failed to fetch debts:', error);
+      console.error("Failed to fetch debts:", error);
       // Fallback to empty array
       return [];
     }
@@ -140,12 +153,12 @@ export const api = {
   // Add new debt
   async addDebt(debtData) {
     try {
-      return await apiRequest('/debts', {
-        method: 'POST',
+      return await apiRequest("/debts", {
+        method: "POST",
         body: JSON.stringify(debtData),
       });
     } catch (error) {
-      console.error('Failed to add debt:', error);
+      console.error("Failed to add debt:", error);
       throw error;
     }
   },
@@ -153,9 +166,9 @@ export const api = {
   // Get debt summary
   async getDebtSummary() {
     try {
-      return await apiRequest('/debts/summary/totals');
+      return await apiRequest("/debts/summary/totals");
     } catch (error) {
-      console.error('Failed to fetch debt summary:', error);
+      console.error("Failed to fetch debt summary:", error);
       // Fallback to default summary
       return {
         totalDebtUSD: 0,
@@ -172,19 +185,37 @@ export const api = {
   // Get exchange distribution (for charts)
   async getExchangeDistribution() {
     try {
-      return await apiRequest('/portfolio/exchange-distribution');
+      return await apiRequest("/portfolio/exchange-distribution");
     } catch (error) {
-      console.error('Failed to fetch exchange distribution:', error);
+      console.error("Failed to fetch exchange distribution:", error);
       // Fallback to empty chart data
       return {
         labels: [],
-        datasets: [{
-          data: [],
-          backgroundColor: [],
-          borderColor: [],
-          borderWidth: 2,
-        }],
+        datasets: [
+          {
+            data: [],
+            backgroundColor: [],
+            borderColor: [],
+            borderWidth: 2,
+          },
+        ],
         totalValue: 0,
+      };
+    }
+  },
+
+  // Get total debt sum
+  async getTotalDebt() {
+    try {
+      return await apiRequest("/portfolio/total-debt");
+    } catch (error) {
+      console.error("Failed to fetch total debt:", error);
+      // Fallback to default debt
+      return {
+        totalDebtUSD: 0,
+        totalDebtIDR: 0,
+        debtCount: 0,
+        currency: "USD",
       };
     }
   },
@@ -192,9 +223,9 @@ export const api = {
   // Get total revenue
   async getTotalRevenue() {
     try {
-      return await apiRequest('/portfolio/revenue');
+      return await apiRequest("/portfolio/revenue");
     } catch (error) {
-      console.error('Failed to fetch total revenue:', error);
+      console.error("Failed to fetch total revenue:", error);
       // Fallback to default revenue
       return {
         totalAssetsUSD: 0,
@@ -205,13 +236,31 @@ export const api = {
     }
   },
 
+  // Get configuration
+  async getConfig() {
+    try {
+      return await apiRequest("/config");
+    } catch (error) {
+      console.error("Failed to fetch config:", error);
+      // Fallback to default config
+      return {
+        success: false,
+        data: {
+          USD_TO_IDR_RATE: { value: "16500" },
+          CURRENCY_DEFAULT: { value: "USD" },
+          CURRENCY_SUPPORTED: { value: "USD,IDR" },
+        },
+      };
+    }
+  },
+
   // Health check
   async healthCheck() {
     try {
-      return await apiRequest('/health');
+      return await apiRequest("/health");
     } catch (error) {
-      console.error('API health check failed:', error);
-      return { status: 'ERROR', message: 'API is not responding' };
+      console.error("API health check failed:", error);
+      return { status: "ERROR", message: "API is not responding" };
     }
   },
 };

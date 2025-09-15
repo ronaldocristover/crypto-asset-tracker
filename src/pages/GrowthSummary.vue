@@ -76,9 +76,7 @@
                   </h4>
                   <p class="text-2xl font-bold text-blue-600 mt-1">
                     1 USD =
-                    {{
-                      currencyService.getExchangeRate().toLocaleString("id-ID")
-                    }}
+                    {{ currencyDisplay.exchangeRate.toLocaleString("id-ID") }}
                     IDR
                   </p>
                 </div>
@@ -111,7 +109,7 @@
                     $1,000 USD =
                     {{
                       currencyService.formatCurrency(
-                        currencyService.usdToIdr(1000),
+                        currencyDisplay.usd1000InIdr,
                         "IDR"
                       )
                     }}
@@ -120,7 +118,7 @@
                     $10,000 USD =
                     {{
                       currencyService.formatCurrency(
-                        currencyService.usdToIdr(10000),
+                        currencyDisplay.usd10000InIdr,
                         "IDR"
                       )
                     }}
@@ -192,17 +190,7 @@
                 <th
                   class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
-                  Amount
-                </th>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
                   Exchange
-                </th>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Purchase Price
                 </th>
                 <th
                   class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -218,11 +206,6 @@
                   class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   Total Value
-                </th>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  P&L
                 </th>
               </tr>
             </thead>
@@ -254,40 +237,29 @@
                   </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {{ asset.amount }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {{ asset.exchange }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  ${{ asset.purchasePrice.toLocaleString() }}
+                  <div class="flex items-center">
+                    <span class="text-lg mr-2">{{
+                      getExchangeIcon(asset.exchange)
+                    }}</span>
+                    {{ asset.exchange }}
+                  </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {{ asset.currency === "IDR" ? "Rp" : "$"
-                  }}{{ asset.currentPrice.toLocaleString() }}
+                  }}{{ (asset.currentPrice || 0).toLocaleString() }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {{ asset.currency || "USD" }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {{ asset.currency === "IDR" ? "Rp" : "$"
-                  }}{{ asset.totalValue.toLocaleString() }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                  <span
-                    class="font-medium"
-                    :class="
-                      asset.profitLoss >= 0
-                        ? 'text-success-600'
-                        : 'text-danger-600'
-                    "
-                  >
-                    {{ asset.profitLoss >= 0 ? "+" : ""
-                    }}{{ asset.currency === "IDR" ? "Rp" : "$"
-                    }}{{ asset.profitLoss.toLocaleString() }} ({{
-                      asset.profitLossPercentage >= 0 ? "+" : ""
-                    }}{{ asset.profitLossPercentage.toFixed(2) }}%)
-                  </span>
+                  }}{{
+                    (
+                      asset.totalValue ||
+                      asset.currentPrice ||
+                      0
+                    ).toLocaleString()
+                  }}
                 </td>
               </tr>
             </tbody>
@@ -374,7 +346,7 @@ export default {
   setup() {
     const loading = ref(true);
     const assets = ref([]);
-    const dailyGrowth = ref([]);
+    const portfolioValueOverTime = ref([]);
     const debts = ref([]);
     const summary = ref({
       totalValue: 0,
@@ -393,19 +365,63 @@ export default {
       usd: 0,
     });
 
+    // Currency display data
+    const currencyDisplay = ref({
+      exchangeRate: 16500,
+      usd1000InIdr: 0,
+      usd10000InIdr: 0,
+    });
+
+    const loadCurrencyData = async () => {
+      try {
+        const exchangeRate = await currencyService.getExchangeRate();
+        const usd1000InIdr = await currencyService.usdToIdr(1000);
+        const usd10000InIdr = await currencyService.usdToIdr(10000);
+
+        currencyDisplay.value = {
+          exchangeRate,
+          usd1000InIdr,
+          usd10000InIdr,
+        };
+      } catch (error) {
+        console.error("Error loading currency data:", error);
+        // Use default values
+        currencyDisplay.value = {
+          exchangeRate: 16500,
+          usd1000InIdr: 16500000,
+          usd10000InIdr: 165000000,
+        };
+      }
+    };
+
+    // Exchange icons mapping
+    const getExchangeIcon = (exchangeName) => {
+      const icons = {
+        Binance: "🟡",
+        Coinbase: "🔵",
+        Kraken: "🟣",
+        KuCoin: "🟢",
+        Bybit: "🟠",
+        OKX: "🔴",
+        "Gate.io": "⚫",
+        Huobi: "🟤",
+      };
+      return icons[exchangeName] || "💎";
+    };
+
     const loadData = async () => {
       try {
         loading.value = true;
         const [
           assetsData,
-          growthData,
+          portfolioValueData,
           summaryData,
           debtsData,
           debtSummaryData,
           revenueData,
         ] = await Promise.all([
           api.getAssets(),
-          api.getDailyGrowth(),
+          api.getPortfolioValueOverTime(),
           api.getPortfolioSummary(),
           api.getDebts(),
           api.getDebtSummary(),
@@ -413,7 +429,7 @@ export default {
         ]);
 
         assets.value = assetsData;
-        dailyGrowth.value = growthData;
+        portfolioValueOverTime.value = portfolioValueData;
         summary.value = summaryData;
         debts.value = debtsData;
         debtSummary.value = debtSummaryData;
@@ -430,7 +446,7 @@ export default {
     };
 
     const portfolioChartData = computed(() => ({
-      labels: dailyGrowth.value.map((item) => {
+      labels: portfolioValueOverTime.value.map((item) => {
         const date = new Date(item.date);
         return date.toLocaleDateString("en-US", {
           month: "short",
@@ -440,7 +456,7 @@ export default {
       datasets: [
         {
           label: "Portfolio Value (USD)",
-          data: dailyGrowth.value.map((item) => item.totalValue),
+          data: portfolioValueOverTime.value.map((item) => item.totalValue),
           borderColor: "rgb(14, 165, 233)",
           backgroundColor: "rgba(14, 165, 233, 0.1)",
           tension: 0.4,
@@ -468,7 +484,7 @@ export default {
     }));
 
     const profitLossChartData = computed(() => ({
-      labels: dailyGrowth.value.map((item) => {
+      labels: portfolioValueOverTime.value.map((item) => {
         const date = new Date(item.date);
         return date.toLocaleDateString("en-US", {
           month: "short",
@@ -478,7 +494,7 @@ export default {
       datasets: [
         {
           label: "Profit/Loss",
-          data: dailyGrowth.value.map((item) => item.profitLoss),
+          data: portfolioValueOverTime.value.map((item) => item.profitLoss),
           borderColor: "rgb(34, 197, 94)",
           backgroundColor: "rgba(34, 197, 94, 0.1)",
           tension: 0.4,
@@ -506,12 +522,14 @@ export default {
 
     const exchangeDistributionData = ref({
       labels: [],
-      datasets: [{
-        data: [],
-        backgroundColor: [],
-        borderColor: [],
-        borderWidth: 2,
-      }],
+      datasets: [
+        {
+          data: [],
+          backgroundColor: [],
+          borderColor: [],
+          borderWidth: 2,
+        },
+      ],
     });
 
     const loadExchangeDistribution = async () => {
@@ -519,7 +537,7 @@ export default {
         const data = await api.getExchangeDistribution();
         exchangeDistributionData.value = data;
       } catch (error) {
-        console.error('Error loading exchange distribution:', error);
+        console.error("Error loading exchange distribution:", error);
       }
     };
 
@@ -552,6 +570,7 @@ export default {
     onMounted(() => {
       loadData();
       loadExchangeDistribution();
+      loadCurrencyData();
     });
 
     return {
@@ -560,6 +579,9 @@ export default {
       summary,
       debtSummary,
       totalRevenue,
+      portfolioValueOverTime,
+      currencyDisplay,
+      getExchangeIcon,
       loadExchangeDistribution,
       portfolioChartData,
       portfolioChartOptions,

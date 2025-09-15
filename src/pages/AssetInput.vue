@@ -111,7 +111,7 @@
                 <span class="text-gray-500">Existing Amount:</span>
                 <span class="font-medium ml-2">
                   {{ form.currency === "IDR" ? "Rp" : "$"
-                  }}{{ form.existingAmount.toLocaleString() }}
+                  }}{{ (form.existingAmount || 0).toLocaleString() }}
                 </span>
               </div>
               <div>
@@ -406,24 +406,29 @@
             <div>
               <h4 class="font-medium text-gray-900">{{ asset.name }}</h4>
               <p class="text-sm text-gray-500">
-                {{ asset.exchange }} • {{ asset.amount }} {{ asset.symbol }}
+                {{ asset.exchange }} • {{ asset.amount || 0 }}
+                {{ asset.symbol }}
               </p>
             </div>
           </div>
           <div class="text-right">
             <p class="font-medium text-gray-900">
-              ${{ asset.totalValue.toLocaleString() }}
+              ${{
+                (asset.totalValue || asset.currentPrice || 0).toLocaleString()
+              }}
             </p>
             <p
               class="text-sm"
               :class="
-                asset.profitLoss >= 0 ? 'text-success-600' : 'text-danger-600'
+                (asset.profitLoss || 0) >= 0
+                  ? 'text-success-600'
+                  : 'text-danger-600'
               "
             >
-              {{ asset.profitLoss >= 0 ? "+" : "" }}$
-              {{ asset.profitLoss.toLocaleString() }}
-              ({{ asset.profitLossPercentage >= 0 ? "+" : ""
-              }}{{ asset.profitLossPercentage.toFixed(2) }}%)
+              {{ (asset.profitLoss || 0) >= 0 ? "+" : "" }}$
+              {{ (asset.profitLoss || 0).toLocaleString() }}
+              ({{ (asset.profitLossPercentage || 0) >= 0 ? "+" : ""
+              }}{{ (asset.profitLossPercentage || 0).toFixed(2) }}%)
             </p>
           </div>
         </div>

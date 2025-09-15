@@ -1,0 +1,38 @@
+version: "3.8"
+
+services:
+  # Backend API
+  backend:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: asset-tracker-backend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - PORT=3001
+    ports:
+      - "3001:3001"
+    networks:
+      - asset-tracker-network
+    volumes:
+      - ./api/prisma:/app/prisma
+
+  # Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: asset-tracker-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - asset-tracker-network
+
+networks:
+  asset-tracker-network:
+    driver: bridge
