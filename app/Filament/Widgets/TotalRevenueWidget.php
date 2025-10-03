@@ -34,6 +34,7 @@ class TotalRevenueWidget extends BaseWidget
 
                 return $capital->amount;
             });
+        // dd($totalCapital);
 
         // Calculate revenue (profit/loss)
         $revenue = $todayTotal - $totalCapital;

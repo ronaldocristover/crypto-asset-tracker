@@ -22,16 +22,39 @@ class CapitalsTable
                 TextColumn::make('amount')
                     ->numeric()
                     ->formatStateUsing(function ($state, $record) {
-                        return $record->currency === 'usd'
-                            ? '$' . number_format($state, 2)
-                            : 'Rp. ' . number_format($state, 0);
+                        $currency = strtolower($record->currency);
+                        $symbol = match ($currency) {
+                            'usd' => '$',
+                            'eur' => '€',
+                            'gbp' => '£',
+                            'jpy' => '¥',
+                            'aud' => 'A$',
+                            'cad' => 'C$',
+                            'chf' => 'CHF',
+                            'cny' => '¥',
+                            'idr' => 'Rp.',
+                            default => strtoupper($currency),
+                        };
+
+                        $decimals = in_array($currency, ['idr', 'jpy']) ? 0 : 2;
+                        $formattedAmount = number_format($state, $decimals);
+
+                        return $symbol . ' ' . $formattedAmount;
                     })
                     ->sortable(),
                 TextColumn::make('currency')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
+                    ->color(fn (string $state): string => match (strtolower($state)) {
                         'idr' => 'success',
                         'usd' => 'info',
+                        'eur' => 'primary',
+                        'gbp' => 'warning',
+                        'jpy' => 'danger',
+                        'aud' => 'gray',
+                        'cad' => 'success',
+                        'chf' => 'info',
+                        'cny' => 'primary',
+                        default => 'gray',
                     })
                     ->searchable(),
                 TextColumn::make('created_at')

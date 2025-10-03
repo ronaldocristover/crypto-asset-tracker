@@ -16,7 +16,8 @@ class DatabaseSeeder extends Seeder
             ConfigSeeder::class,
             AdminUserSeeder::class,
             CapitalSeeder::class,
-            CryptoExchangeSeeder::class
+            CryptoExchangeSeeder::class,
+            TransactionSeeder::class
         ]);
     }
 }
