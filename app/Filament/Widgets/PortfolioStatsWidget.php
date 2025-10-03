@@ -2,10 +2,10 @@
 
 namespace App\Filament\Widgets;
 
+use App\Models\Config;
 use App\Models\Portfolio;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Illuminate\Support\Facades\DB;
 
 class PortfolioStatsWidget extends BaseWidget
 {
@@ -16,13 +16,29 @@ class PortfolioStatsWidget extends BaseWidget
         $today = now()->toDateString();
         $yesterday = now()->subDay()->toDateString();
 
+        $usd_idr = Config::where('key', 'currency_usdidr')->first()->value;
+
         // Get total portfolio amount for today
         $todayTotal = Portfolio::whereDate('date', $today)
-            ->sum('amount');
+            ->get()
+            ->sum(function ($portfolio) use ($usd_idr) {
+                if ($portfolio->currency === 'idr') {
+                    return $portfolio->amount / $usd_idr;
+                }
+
+                return $portfolio->amount;
+            });
 
         // Get total portfolio amount for yesterday
         $yesterdayTotal = Portfolio::whereDate('date', $yesterday)
-            ->sum('amount');
+            ->get()
+            ->sum(function ($portfolio) use ($usd_idr) {
+                if ($portfolio->currency === 'IDR') {
+                    return $portfolio->amount / $usd_idr;
+                }
+
+                return $portfolio->amount;
+            });
 
         // Calculate percentage change
         $percentageChange = 0;
