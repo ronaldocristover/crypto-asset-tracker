@@ -12,6 +12,8 @@ class ExchangeAllocationPieChart extends ChartWidget
 
     protected int | string | array $columnSpan = 'half';
 
+    protected ?string $maxHeight = '300px';
+
     protected function getData(): array
     {
         $today = now()->toDateString();

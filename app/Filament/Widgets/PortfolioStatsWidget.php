@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\DB;
 
 class PortfolioStatsWidget extends BaseWidget
 {
+    protected int | string | array $columnSpan = 'full';
+
     protected function getStats(): array
     {
         $today = now()->toDateString();

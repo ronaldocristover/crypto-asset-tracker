@@ -2,6 +2,11 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Widgets\ExchangeAllocationPieChart;
+use App\Filament\Widgets\PortfolioStatsWidget;
+use App\Filament\Widgets\PortfolioTrendChartWidget;
+use App\Filament\Widgets\TotalCapitalWidget;
+use App\Filament\Widgets\TotalRevenueWidget;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -10,11 +15,6 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use App\Filament\Widgets\ExchangeAllocationPieChart;
-use App\Filament\Widgets\PortfolioStatsWidget;
-use App\Filament\Widgets\PortfolioTrendChartWidget;
-use Filament\Widgets\AccountWidget;
-use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -31,6 +31,8 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->brandLogo('https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/1024px-Bitcoin.svg.png')
+            ->brandLogoHeight('3rem')
             ->colors([
                 'primary' => Color::Amber,
             ])
@@ -42,10 +44,10 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([
                 PortfolioStatsWidget::class,
+                TotalCapitalWidget::class,
+                TotalRevenueWidget::class,
                 PortfolioTrendChartWidget::class,
                 ExchangeAllocationPieChart::class,
-                AccountWidget::class,
-                FilamentInfoWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

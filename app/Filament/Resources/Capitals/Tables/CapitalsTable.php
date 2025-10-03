@@ -1,26 +1,24 @@
 <?php
 
-namespace App\Filament\Resources\Portfolios\Tables;
+namespace App\Filament\Resources\Capitals\Tables;
 
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 
-class PortfoliosTable
+class CapitalsTable
 {
     public static function configure(Table $table): Table
     {
         return $table
             ->columns([
-                TextColumn::make('date')
-                    ->date()
-                    ->sortable()
-                    ->default(true),
+                TextColumn::make('name')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('amount')
                     ->numeric()
                     ->formatStateUsing(function ($state, $record) {
@@ -36,10 +34,6 @@ class PortfoliosTable
                         'usd' => 'info',
                     })
                     ->searchable(),
-                TextColumn::make('cryptoExchange.name')
-                    ->label('Crypto Exchange')
-                    ->sortable()
-                    ->searchable(),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -50,24 +44,10 @@ class PortfoliosTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Filter::make('date')
-                    ->form([
-                        \Filament\Forms\Components\DatePicker::make('date_from')
-                            ->label('From Date'),
-                        \Filament\Forms\Components\DatePicker::make('date_until')
-                            ->label('Until Date'),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['date_from'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('date', '>=', $date),
-                            )
-                            ->when(
-                                $data['date_until'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('date', '<=', $date),
-                            );
-                    }),
+                //
+            ])
+            ->headerActions([
+                CreateAction::make(),
             ])
             ->recordActions([
                 EditAction::make(),
