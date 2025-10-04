@@ -22,4 +22,35 @@ class Portfolio extends Model
     {
         return $this->belongsTo(CryptoExchange::class, 'cex_id');
     }
+
+    public static function getTodayAmountInUsd()
+    {
+        return self::getAmountInUsd(now()->toDateString());
+    }
+
+    public static  function getYesterdayAmountInUsd()
+    {
+        $yesterday = now()->subDay()->toDateString();
+        return self::getAmountInUsd($yesterday);
+    }
+
+    public static function getAmountInUsd($date = null)
+    {
+        $rates = Config::getUsdIdr();
+
+        $query = self::query();
+
+        if ($date) {
+            $query->whereDate('date', $date);
+        }
+
+        return $query->get()
+            ->sum(function ($portfolio) use ($rates) {
+                if ($portfolio->currency === 'idr') {
+                    return $portfolio->amount / $rates;
+                }
+
+                return $portfolio->amount;
+            });
+    }
 }

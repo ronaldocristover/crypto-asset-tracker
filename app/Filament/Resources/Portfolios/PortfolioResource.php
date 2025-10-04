@@ -2,16 +2,17 @@
 
 namespace App\Filament\Resources\Portfolios;
 
-use App\Filament\Resources\Portfolios\Pages\ManagePortfolios;
-use App\Filament\Resources\Portfolios\Schemas\PortfolioForm;
-use App\Filament\Resources\Portfolios\Schemas\PortfolioInfolist;
-use App\Filament\Resources\Portfolios\Tables\PortfoliosTable;
-use App\Models\Portfolio;
 use BackedEnum;
-use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
+use App\Models\Portfolio;
 use Filament\Tables\Table;
+use Filament\Schemas\Schema;
+use Filament\Resources\Resource;
+use Filament\Support\Icons\Heroicon;
+use App\Filament\Resources\Portfolios\Schemas\PortfolioForm;
+use App\Filament\Resources\Portfolios\Pages\ManagePortfolios;
+use App\Filament\Resources\Portfolios\Tables\PortfoliosTable;
+use App\Filament\Resources\Portfolios\Schemas\PortfolioInfolist;
+use App\Filament\Resources\Portfolios\Widgets\TotalRevenueResourceOverview;
 
 class PortfolioResource extends Resource
 {
@@ -45,6 +46,13 @@ class PortfolioResource extends Resource
     {
         return [
             'index' => ManagePortfolios::route('/'),
+        ];
+    }
+
+    public static function getWidgets(): array
+    {
+        return [
+            TotalRevenueResourceOverview::class,
         ];
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Portfolio;
+use App\Models\Config;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\DB;
 
@@ -10,23 +11,31 @@ class ExchangeAllocationPieChart extends ChartWidget
 {
     protected ?string $heading = 'Exchange Allocation (Today)';
 
-    protected int | string | array $columnSpan = 'half';
+    protected int | string | array $columnSpan = 1;
+
+    protected static ?int $sort = 1;
 
     protected ?string $maxHeight = '300px';
 
     protected function getData(): array
     {
         $today = now()->toDateString();
+        $rates = Config::getUsdIdr();
 
-        // Get allocation per exchange for today
+        // Get allocation per exchange for today with currency conversion
         $allocations = Portfolio::whereDate('date', $today)
             ->join('crypto_exchanges', 'portfolios.cex_id', '=', 'crypto_exchanges.id')
             ->select(
                 'crypto_exchanges.name',
-                DB::raw('SUM(portfolios.amount) as total_amount')
+                DB::raw("SUM(
+                CASE
+                    WHEN portfolios.currency = 'idr' THEN portfolios.amount / {$rates}
+                    ELSE portfolios.amount
+                END
+            ) as total_amount_usd")
             )
             ->groupBy('crypto_exchanges.id', 'crypto_exchanges.name')
-            ->orderByDesc('total_amount')
+            ->orderByDesc('total_amount_usd')
             ->get();
 
         $labels = [];
@@ -41,15 +50,15 @@ class ExchangeAllocationPieChart extends ChartWidget
             'rgb(251, 146, 60)',  // Orange
         ];
 
-        foreach ($allocations as $index => $allocation) {
+        foreach ($allocations as $allocation) {
             $labels[] = $allocation->name;
-            $data[] = (float) $allocation->total_amount;
+            $data[] = round((float) $allocation->total_amount_usd, 2);
         }
 
         return [
             'datasets' => [
                 [
-                    'label' => 'Allocation',
+                    'label' => 'Allocation (USD)',
                     'data' => $data,
                     'backgroundColor' => array_slice($colors, 0, count($data)),
                 ],

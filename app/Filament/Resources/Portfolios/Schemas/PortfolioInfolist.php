@@ -2,8 +2,9 @@
 
 namespace App\Filament\Resources\Portfolios\Schemas;
 
-use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Schema;
+use Filament\Infolists\Components\TextEntry;
+use App\Filament\Resources\Portfolios\Widgets\TotalRevenueResourceOverview;
 
 class PortfolioInfolist
 {
@@ -17,7 +18,7 @@ class PortfolioInfolist
                     ->numeric(),
                 TextEntry::make('currency')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
+                    ->color(fn(string $state): string => match ($state) {
                         'idr' => 'success',
                         'usd' => 'info',
                     }),
@@ -30,5 +31,12 @@ class PortfolioInfolist
                     ->dateTime()
                     ->placeholder('-'),
             ]);
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            TotalRevenueResourceOverview::class,
+        ];
     }
 }

@@ -11,4 +11,18 @@ class Capital extends Model
         'amount',
         'currency',
     ];
+
+    public static function getTotalCapitalUsd()
+    {
+        $rates = Config::getUsdIdr();
+
+        return self::all()
+            ->sum(function ($capital) use ($rates) {
+                if ($capital->currency === 'idr') {
+                    return $capital->amount / $rates;
+                }
+
+                return $capital->amount;
+            });
+    }
 }

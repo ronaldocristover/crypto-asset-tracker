@@ -10,7 +10,11 @@ class PortfolioTrendChartWidget extends ChartWidget
 {
     protected ?string $heading = 'Portfolio Trend (Last 7 Days)';
 
-    protected int | string | array $columnSpan = 'half';
+    protected int | string | array $columnSpan = 1; // Ambil 1 kolom dari 2
+
+    protected static ?int $sort = 2; // Tampil kedua (kanan)
+
+    protected ?string $maxHeight = '300px';
 
     protected function getData(): array
     {

@@ -2,11 +2,9 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Widgets\CalculationOverview;
 use App\Filament\Widgets\ExchangeAllocationPieChart;
-use App\Filament\Widgets\PortfolioStatsWidget;
 use App\Filament\Widgets\PortfolioTrendChartWidget;
-use App\Filament\Widgets\TotalCapitalWidget;
-use App\Filament\Widgets\TotalRevenueWidget;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -45,11 +43,9 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([
-                PortfolioStatsWidget::class,
-                TotalCapitalWidget::class,
-                TotalRevenueWidget::class,
                 PortfolioTrendChartWidget::class,
                 ExchangeAllocationPieChart::class,
+                CalculationOverview::class
             ])
             ->middleware([
                 EncryptCookies::class,
